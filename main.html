@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 영상 진위 분석 결과 - EmpathyGuard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* 게이지 바 애니메이션 효과 */
+        .gauge-transition {
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* 부드러운 페이드인 효과 */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans">
+
+    <div class="min-h-screen p-4 py-12 fade-in">
+        <div class="max-w-4xl mx-auto">
+            
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-slate-900 mb-2">분석 완료</h1>
+                <p class="text-slate-600">AI 기반 영상 진위 분석 결과입니다</p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl p-8 mb-6 border border-slate-100">
+                <div class="text-center">
+                    
+                    <div id="icon-container" class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-100 mb-4 transition-colors duration-300">
+                        <i id="status-icon" data-lucide="loader" class="w-10 h-10 text-slate-400"></i>
+                    </div>
+                    
+                    <h2 id="result-title" class="text-2xl font-bold text-slate-900 mb-2">분석 중...</h2>
+
+                    <div class="mt-6">
+                        <div class="flex items-center justify-center gap-2 mb-2">
+                            <span class="text-sm font-medium text-slate-600">신뢰도 점수</span>
+                        </div>
+                        <div id="trust-score" class="text-6xl font-bold text-slate-300 mb-2 transition-colors duration-500">
+                            0%
+                        </div>
+                        <div id="trust-label" class="inline-block px-4 py-1 rounded-full text-white text-sm font-medium bg-slate-300 transition-colors duration-500">
+                            대기 중
+                        </div>
+                    </div>
+
+                    <div class="mt-6 w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                        <div id="progress-bar" class="h-full gauge-transition bg-slate-400" style="width: 0%"></div>
+                    </div>
+
+                    <div class="mt-6 grid grid-cols-2 gap-4 text-left">
+                        <div class="bg-slate-50 rounded-lg p-4 hover:bg-slate-100 transition-colors">
+                            <div class="flex items-center gap-2 mb-1">
+                                <i data-lucide="bar-chart-3" class="w-4 h-4 text-slate-600"></i>
+                                <span class="text-sm text-slate-600">분석 정확도</span>
+                            </div>
+                            <p id="accuracy-score" class="text-2xl font-bold text-slate-900">-</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-4 hover:bg-slate-100 transition-colors">
+                            <div class="flex items-center gap-2 mb-1">
+                                <i data-lucide="file-text" class="w-4 h-4 text-slate-600"></i>
+                                <span class="text-sm text-slate-600">분석 방식</span>
+                            </div>
+                            <p class="text-sm font-medium text-slate-900">AI 멀티모달 분석</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-slate-100">
+                <h3 class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                    <i data-lucide="mic" class="w-5 h-5 text-slate-500"></i>
+                    추출된 음성 텍스트
+                </h3>
+                <div class="bg-slate-50 rounded-lg p-4">
+                    <p id="transcription" class="text-slate-700 leading-relaxed font-medium">...</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-slate-100">
+                <h3 class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                    <i data-lucide="brain-circuit" class="w-5 h-5 text-slate-500"></i>
+                    AI 분석 요약
+                </h3>
+                <div class="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4">
+                    <p id="summary" class="text-slate-700 leading-relaxed">...</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-slate-100">
+                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="search" class="w-5 h-5 text-slate-500"></i>
+                    신뢰도 판단 근거
+                </h3>
+                <div id="evidence-list" class="space-y-3">
+                    </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-slate-100">
+                <h3 class="text-sm font-medium text-slate-600 mb-2">분석된 영상 출처</h3>
+                <a id="video-url" href="#" target="_blank" class="block text-sm text-blue-600 break-all font-mono bg-slate-50 p-3 rounded-lg hover:underline hover:bg-blue-50 transition-colors">
+                    -
+                </a>
+            </div>
+
+            <div class="text-center pb-8">
+                <button onclick="resetAnalysis()" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1">
+                    <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                    다른 영상 분석하기
+                </button>
+            </div>
+
+            <div class="text-center text-xs text-slate-400">
+                <p>본 결과는 AI 알고리즘에 의한 분석이며, 법적 효력을 갖지 않습니다.</p>
+                <p class="mt-1">최종 판단에는 사용자의 주의가 필요합니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- [설정] 샘플 데이터 (서버에서 받아온 데이터라고 가정) ---
+        // isFake 값을 true/false로 바꾸거나 trustScore를 조정하여 테스트해보세요.
+        const mockData = {
+            isFake: true,            // true: 가짜/의심, false: 진짜/신뢰
+            trustScore: 28,          // 신뢰도 점수 (0~100)
+            accuracy: 94.5,          // 분석 정확도
+            transcription: "여러분, 이 코인은 100% 오릅니다. 제가 장담합니다. 지금 바로 매수하지 않으면 평생 후회할 기회입니다. 정부에서도 밀어주는 확실한 정보입니다.",
+            summary: "해당 영상은 시청자의 '조급함'을 자극하여 금전적 이득을 취하려는 전형적인 스캠 패턴이 감지되었습니다. 화자의 목소리 톤이 인공적으로 합성된 흔적(DeepVoice)이 발견되었습니다.",
+            evidences: [
+                "절대적 수익 보장 등 과장된 어휘 사용 (빈도: 매우 높음)",
+                "화자의 입모양과 음성 싱크 불일치 감지 (구간: 00:12 ~ 00:45)",
+                "공식 보도자료에 없는 허위 사실 포함",
+                "긴박감을 조성하는 배경음악과 격앙된 어조"
+            ],
+            videoUrl: "https://youtube.com/watch?v=suspicious_video_123"
+        };
+
+        // --- [함수] 화면 렌더링 로직 ---
+        function renderPage(data) {
+            // 1. 색상 및 상태 결정 함수
+            const getColorState = (score) => {
+                if (score >= 70) return { text: 'text-green-600', bg: 'bg-green-500', label: '신뢰 가능', icon: 'check-circle' };
+                if (score >= 40) return { text: 'text-yellow-600', bg: 'bg-yellow-500', label: '주의 필요', icon: 'alert-triangle' };
+                return { text: 'text-red-600', bg: 'bg-red-500', label: '신뢰 불가', icon: 'alert-octagon' }; // 점수가 낮으면 빨간색
+            };
+
+            const state = getColorState(data.trustScore);
+            
+            // 만약 가짜(isFake=true)라면 점수와 상관없이 빨간색 강제 적용 (옵션)
+            // 여기서는 점수 기반으로 색상을 보여주되, 아이콘만 isFake에 따라 다르게 할 수도 있습니다.
+            // 편의상 위 state 로직을 그대로 사용합니다.
+
+            // 2. DOM 요소 업데이트
+            
+            // 메인 아이콘
+            const iconEl = document.getElementById('status-icon');
+            iconEl.setAttribute('data-lucide', data.isFake ? 'alert-triangle' : 'check-circle'); // 아이콘 모양 변경
+            iconEl.className = `w-10 h-10 ${data.isFake ? 'text-red-500' : 'text-green-500'}`; // 아이콘 색상
+
+            // 타이틀
+            document.getElementById('result-title').textContent = data.isFake ? '주의: 조작된 콘텐츠 의심' : '검증 완료: 신뢰할 수 있는 콘텐츠';
+            
+            // 신뢰도 점수
+            const scoreEl = document.getElementById('trust-score');
+            scoreEl.textContent = `${data.trustScore}%`;
+            scoreEl.className = `text-6xl font-bold mb-2 transition-colors duration-500 ${state.text}`;
+
+            // 신뢰도 라벨 (뱃지)
+            const labelEl = document.getElementById('trust-label');
+            labelEl.textContent = state.label;
+            labelEl.className = `inline-block px-4 py-1 rounded-full text-white text-sm font-medium transition-colors duration-500 ${state.bg}`;
+
+            // 프로그레스 바 (애니메이션)
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.className = `h-full gauge-transition ${state.bg}`;
+            // 약간의 딜레이 후 너비 적용 (애니메이션 효과)
+            setTimeout(() => {
+                progressBar.style.width = `${data.trustScore}%`;
+            }, 100);
+
+            // 텍스트 정보들 바인딩
+            document.getElementById('accuracy-score').textContent = `${data.accuracy}%`;
+            document.getElementById('transcription').textContent = data.transcription;
+            document.getElementById('summary').textContent = data.summary;
+            
+            const urlLink = document.getElementById('video-url');
+            urlLink.textContent = data.videoUrl;
+            urlLink.href = data.videoUrl;
+
+            // 3. 근거 리스트 동적 생성
+            const listContainer = document.getElementById('evidence-list');
+            listContainer.innerHTML = ''; // 초기화
+
+            data.evidences.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100';
+                div.innerHTML = `
+                    <div class="flex-shrink-0 w-6 h-6 bg-slate-200 rounded-full flex items-center justify-center text-xs font-bold text-slate-600 mt-0.5">
+                        ${index + 1}
+                    </div>
+                    <p class="flex-1 text-slate-700 leading-relaxed text-sm">${item}</p>
+                `;
+                listContainer.appendChild(div);
+            });
+
+            // 4. 아이콘 다시 그리기 (Lucide 라이브러리 실행)
+            lucide.createIcons();
+        }
+
+        // --- [이벤트] 버튼 클릭 핸들러 ---
+        function resetAnalysis() {
+            if (confirm('현재 결과를 지우고 새로운 분석을 시작하시겠습니까?')) {
+                // 실제 앱에서는 여기서 입력 페이지로 라우팅하거나 상태를 초기화합니다.
+                location.reload(); // 데모용: 페이지 새로고침
+            }
+        }
+
+        // --- [초기화] 페이지 로드 시 실행 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // 실제로는 API 호출 등을 통해 데이터를 가져옵니다.
+            // 여기서는 0.5초 뒤에 분석이 완료된 것처럼 연출합니다.
+            setTimeout(() => {
+                renderPage(mockData);
+            }, 500);
+            
+            // 초기 아이콘 로드
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
